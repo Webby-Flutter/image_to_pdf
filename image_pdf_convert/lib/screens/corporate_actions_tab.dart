@@ -4,27 +4,172 @@ import 'package:image_pdf_convert/models/enums_model.dart';
 import 'package:intl/intl.dart';
 import '../models/corporate_action_model.dart';
 
-class CorporateActionsTab extends StatelessWidget {
-  final List<CorporateAction> actions;
+// class CorporateActionsTab extends StatelessWidget {
+//   final List<CorporateAction> actions;
 
-  const CorporateActionsTab({super.key, required this.actions});
+//   const CorporateActionsTab({super.key, required this.actions});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     if (actions.isEmpty) {
+//       return const Center(
+//         child: Text('No corporate actions available', style: TextStyle(fontSize: 16, color: Colors.grey)),
+//       );
+//     }
+
+//     return ListView.builder(
+//       itemCount: actions.length,
+//       padding: const EdgeInsets.all(16),
+//       itemBuilder: (context, index) {
+//         final action = actions[index];
+//         return _CorporateActionCard(corporateAction: action);
+//       },
+//     );
+//   }
+// }
+
+class CorporateActionsTab extends StatefulWidget {
+  final List<CorporateAction> actions;
+  final bool hasMoreData;
+  final Future<void> Function()? onLoadMore; // Change to Future function
+  final bool isLoading;
+  final VoidCallback? onRefresh;
+
+  const CorporateActionsTab({
+    super.key,
+    required this.actions,
+    this.hasMoreData = false,
+    this.onLoadMore,
+    this.isLoading = false,
+    this.onRefresh,
+  });
+
+  @override
+  State<CorporateActionsTab> createState() => _CorporateActionsTabState();
+}
+
+class _CorporateActionsTabState extends State<CorporateActionsTab> {
+  final _scrollController = ScrollController();
+  bool _isLoadingMore = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
+      _loadMore();
+    }
+  }
+
+  void _loadMore() {
+    if (!_isLoadingMore && widget.hasMoreData && widget.onLoadMore != null) {
+      setState(() {
+        _isLoadingMore = true;
+      });
+
+      widget.onLoadMore!()
+          .then((_) {
+            setState(() {
+              _isLoadingMore = false;
+            });
+          })
+          .catchError((_) {
+            setState(() {
+              _isLoadingMore = false;
+            });
+          });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (actions.isEmpty) {
+    if (widget.actions.isEmpty && !widget.isLoading) {
       return const Center(
         child: Text('No corporate actions available', style: TextStyle(fontSize: 16, color: Colors.grey)),
       );
     }
 
-    return ListView.builder(
-      itemCount: actions.length,
-      padding: const EdgeInsets.all(16),
-      itemBuilder: (context, index) {
-        final action = actions[index];
-        return _CorporateActionCard(corporateAction: action);
-      },
+    return Column(
+      children: [
+        _buildHeader(),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              if (widget.onRefresh != null) {
+                widget.onRefresh!();
+              }
+            },
+            child: ListView.builder(
+              controller: _scrollController,
+              itemCount: widget.actions.length + (_shouldShowLoader() ? 1 : 0),
+              padding: const EdgeInsets.all(16),
+              itemBuilder: (context, index) {
+                if (index < widget.actions.length) {
+                  final action = widget.actions[index];
+                  return _CorporateActionCard(corporateAction: action);
+                } else {
+                  return _buildLoadingIndicator();
+                }
+              },
+            ),
+          ),
+        ),
+      ],
     );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Total Corporate Actions: ${widget.actions.length}',
+            style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.grey),
+          ),
+          if (widget.hasMoreData) Text('More data available', style: TextStyle(color: Colors.green[700], fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Center(
+        child: Column(
+          children: [
+            if (_isLoadingMore || widget.isLoading) ...[
+              const CircularProgressIndicator(),
+              const SizedBox(height: 8),
+              const Text('Loading more corporate actions...'),
+            ] else if (!widget.hasMoreData && widget.actions.isNotEmpty) ...[
+              Icon(Icons.check_circle, color: Colors.green[400], size: 32),
+              const SizedBox(height: 8),
+              const Text('All corporate actions loaded', style: TextStyle(color: Colors.grey)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _shouldShowLoader() {
+    return widget.actions.isNotEmpty && (widget.hasMoreData || _isLoadingMore || widget.isLoading);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 }
 

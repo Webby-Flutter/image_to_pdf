@@ -38,7 +38,7 @@ class _NseDataScreenState extends State<NseDataScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NseDataProvider>().loadAllData();
+      context.read<NseDataProvider>().loadInitialData();
     });
   }
 
@@ -51,7 +51,7 @@ class _NseDataScreenState extends State<NseDataScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              context.read<NseDataProvider>().loadAllData();
+              context.read<NseDataProvider>().loadInitialData();
             },
           ),
         ],
@@ -73,7 +73,7 @@ class _NseDataScreenState extends State<NseDataScreen> {
                   ElevatedButton(
                     onPressed: () {
                       provider.clearError();
-                      provider.loadAllData();
+                      provider.loadInitialData();
                     },
                     child: const Text('Retry'),
                   ),
@@ -96,8 +96,28 @@ class _NseDataScreenState extends State<NseDataScreen> {
                 Expanded(
                   child: TabBarView(
                     children: [
-                      CorporateActionsTab(actions: provider.corporateActions),
-                      AnnouncementsTab(announcements: provider.corporateAnnouncements),
+                      // CorporateActionsTab(actions: provider.corporateActions),
+                      // AnnouncementsTab(announcements: provider.corporateAnnouncements),
+                      CorporateActionsTab(
+                        actions: provider.corporateActions,
+                        hasMoreData: provider.hasMoreCorporateActions,
+                        onLoadMore: () => provider.loadMoreCorporateActions(),
+                        isLoading: provider.isLoadingMoreCorporateActions,
+                        onRefresh: () => provider.refreshCorporateActions(),
+                      ),
+                      AnnouncementsTab(
+                        announcements: provider.corporateAnnouncements,
+                        hasMoreData: provider.hasMoreAnnouncements,
+                        onLoadMore: () => provider.loadMoreAnnouncements(),
+                        isLoading: provider.isLoadingMoreAnnouncements,
+                        onRefresh: () => provider.refreshAnnouncements(),
+                      ),
+                      // AnnouncementsTab(
+                      //   announcements: provider.corporateAnnouncements,
+                      //   hasMoreData: provider.hasMoreAnnouncements,
+                      //   onLoadMore: () => provider.loadMoreAnnouncements(),
+                      //   isLoading: provider.isLoadingMoreAnnouncements,
+                      // ),
                       BoardMeetingsTab(meetings: provider.boardMeetings),
                     ],
                   ),

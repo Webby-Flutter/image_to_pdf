@@ -2,28 +2,59 @@
 import 'package:image_pdf_convert/models/board_meeting_model.dart';
 import 'package:image_pdf_convert/models/corporate_action_model.dart';
 import 'package:image_pdf_convert/models/corporate_announcement_model.dart';
-import 'package:image_pdf_convert/models/enums_model.dart';
+import 'package:image_pdf_convert/models/pagination_model.dart';
+// import 'package:image_pdf_convert/models/enums_model.dart';
 import 'package:image_pdf_convert/services/nse_api_service.dart';
 
 // nse_repository.dart
 class NseRepository {
-  // Use the direct approach with the cookie from Postman
-  final NseApiService _apiService = NseApiService();
+  final NseApiServiceWithPagination _apiService = NseApiServiceWithPagination();
 
-  Future<List<CorporateAction>> getCorporateActions() async {
-    return await _apiService.getCorporateActions();
+  // Get single page of corporate actions
+  Future<PaginatedResponse<CorporateAction>> getCorporateActionsPage({
+    int page = 0,
+    String? fromDate,
+    String? toDate,
+  }) async {
+    return await _apiService.getCorporateActionsPage(page: page, fromDate: fromDate, toDate: toDate);
   }
 
-  Future<List<CorporateAnnouncement>> getCorporateAnnouncements() async {
-    return await _apiService.getCorporateAnnouncements();
+  // Get single page of announcements
+  Future<PaginatedResponse<CorporateAnnouncement>> getCorporateAnnouncementsPage({
+    int page = 0,
+    String? fromDate,
+    String? toDate,
+  }) async {
+    return await _apiService.getCorporateAnnouncementsPage(page: page, fromDate: fromDate, toDate: toDate);
   }
 
-  Future<List<BoardMeeting>> getBoardMeetings() async {
-    return await _apiService.getBoardMeetings();
+  // Get single page of board meetings
+  Future<PaginatedResponse<BoardMeeting>> getBoardMeetingsPage({int page = 0, String? fromDate, String? toDate}) async {
+    return await _apiService.getBoardMeetingsPage(page: page, fromDate: fromDate, toDate: toDate);
+  }
+
+  // Get latest data only (single page)
+  Future<List<CorporateAction>> getLatestCorporateActions() async {
+    return await _apiService.getLatestCorporateActions();
+  }
+
+  Future<List<CorporateAnnouncement>> getLatestCorporateAnnouncements() async {
+    return await _apiService.getLatestCorporateAnnouncements();
+  }
+
+  Future<List<BoardMeeting>> getLatestBoardMeetings() async {
+    return await _apiService.getLatestBoardMeetings();
+  }
+
+  Future<List<BoardMeeting>> getAllBoardMeetings({int maxPages = 5}) async {
+    return await _apiService.getBoardMeetings(maxPages: maxPages);
   }
 }
 
+
+
 // class NseRepository {
+//   // Use the direct approach with the cookie from Postman
 //   final NseApiService _apiService = NseApiService();
 
 //   Future<List<CorporateAction>> getCorporateActions() async {
@@ -36,27 +67,5 @@ class NseRepository {
 
 //   Future<List<BoardMeeting>> getBoardMeetings() async {
 //     return await _apiService.getBoardMeetings();
-//   }
-
-//   // Filter methods
-//   Future<List<CorporateAction>> getCorporateActionsBySymbol(String symbol) async {
-//     final actions = await getCorporateActions();
-//     return actions.where((action) => action.symbol == symbol).toList();
-//   }
-
-//   Future<List<CorporateAction>> getUpcomingCorporateActions() async {
-//     final actions = await getCorporateActions();
-//     final now = DateTime.now();
-//     return actions.where((action) => action.exDate.isAfter(now)).toList();
-//   }
-
-//   Future<List<CorporateAnnouncement>> getAnnouncementsByType(String type) async {
-//     final announcements = await getCorporateAnnouncements();
-//     return announcements.where((announcement) => announcement.desc == type).toList();
-//   }
-
-//   Future<List<BoardMeeting>> getBoardMeetingsByPurpose(MeetingPurpose purpose) async {
-//     final meetings = await getBoardMeetings();
-//     return meetings.where((meeting) => meeting.bmPurpose == purpose).toList();
 //   }
 // }
