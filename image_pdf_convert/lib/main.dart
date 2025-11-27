@@ -1,4 +1,10 @@
+// import 'package:image_pdf_convert/providers/app_state_provider.dart';
+// import 'package:provider/provider.dart';
+// import 'core/theme/app_theme.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(const MyApp());
@@ -7,116 +13,226 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'NSE Corporate Actions',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
+      home: const CorporateHomePage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class CorporateHomePage extends StatefulWidget {
+  const CorporateHomePage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<CorporateHomePage> createState() => _CorporateHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _CorporateHomePageState extends State<CorporateHomePage> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  List<dynamic> dividends = [];
+  List<dynamic> bonusSplits = [];
+  List<dynamic> boardMeetings = [];
+  List<dynamic> announcements = [];
+  bool isLoading = true;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    fetchAllData();
+  }
+
+  Future<void> fetchAllData() async {
+    setState(() => isLoading = true);
+
+    try {
+      final client = http.Client();
+      final headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://www.nseindia.com/',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'X-Requested-With': 'XMLHttpRequest',
+      };
+
+      final Uri actionsUri = Uri.https('www.nseindia.com', '/api/corporates-corporateActions', {'index': 'equities'});
+
+      final Uri meetingsUri = Uri.https('www.nseindia.com', '/api/corporate-board-meetings', {'index': 'equities'});
+
+      final Uri annUri = Uri.https('www.nseindia.com', '/api/corporate-announcements', {'index': 'equities'});
+      debugPrint("Fetching -->>$actionsUri");
+      final responses = await Future.wait([
+        client.get(actionsUri, headers: headers),
+        client.get(meetingsUri, headers: headers),
+        client.get(annUri, headers: headers),
+      ]);
+
+      final actionsRes = responses[0];
+      final meetingsRes = responses[1];
+      final annRes = responses[2];
+
+      if (actionsRes.statusCode == 200 && meetingsRes.statusCode == 200 && annRes.statusCode == 200) {
+        final List<dynamic> actionsData = json.decode(actionsRes.body);
+        final dynamic meetingsData = json.decode(meetingsRes.body);
+        final dynamic annData = json.decode(annRes.body);
+
+        setState(() {
+          dividends = actionsData
+              .where((e) {
+                final purpose = (e['purpose'] ?? '').toString().toLowerCase();
+                return purpose.contains('dividend');
+              })
+              .take(15)
+              .toList();
+
+          bonusSplits = actionsData
+              .where((e) {
+                final purpose = (e['purpose'] ?? '').toString().toLowerCase();
+                return purpose.contains('bonus') || purpose.contains('split') || purpose.contains('stock split');
+              })
+              .take(10)
+              .toList();
+
+          boardMeetings = (meetingsData is List ? meetingsData : <dynamic>[]).take(15).toList();
+          announcements = (annData is List ? annData : <dynamic>[]).take(20).toList();
+
+          isLoading = false;
+        });
+      } else {
+        throw Exception("Failed to load data: ${actionsRes.statusCode}");
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Check internet or try again later")));
+      }
+      setState(() => isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
+        title: const Text("NSE Corporate Actions"),
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabs: const [
+            Tab(text: "Dividends"),
+            Tab(text: "Bonus/Split"),
+            Tab(text: "Board Meetings"),
+            Tab(text: "Announcements"),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildList(dividends, "No dividends found"),
+                _buildList(bonusSplits, "No bonus/split announced"),
+                _buildList(boardMeetings, "No board meetings"),
+                _buildList(announcements, "No announcements"),
+              ],
+            ),
+      floatingActionButton: FloatingActionButton(onPressed: fetchAllData, child: const Icon(Icons.refresh)),
     );
   }
+
+  Widget _buildList(List<dynamic> items, String emptyMsg) {
+    if (items.isEmpty) {
+      return Center(child: Text(emptyMsg));
+    }
+
+    return RefreshIndicator(
+      onRefresh: fetchAllData,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+
+          String title = "";
+          String subtitle = "";
+          Color color = Colors.blue;
+
+          if (item.containsKey('purpose')) {
+            // Corporate Actions
+            title = item['companyName'] ?? item['symbol'] ?? 'Unknown';
+            subtitle = "${item['purpose']}\nEx-Date: ${item['exDate'] ?? 'N/A'} | Record: ${item['recDate'] ?? 'N/A'}";
+            color = item['purpose'].toString().toLowerCase().contains('dividend') ? Colors.green : Colors.orange;
+          } else if (item.containsKey('bm_desc')) {
+            // Board Meetings
+            title = item['symbol'];
+            subtitle = "Purpose: ${item['bm_desc']}\nDate: ${item['bm_date'] ?? 'TBA'}";
+            color = Colors.purple;
+          } else if (item.containsKey('desc')) {
+            // Announcements
+            title = item['symbol'];
+            subtitle = item['desc'];
+            if (item['attchmntFile'] != null && item['attchmntFile'].toString().contains('.pdf')) {
+              subtitle += "\nTap to view PDF";
+            }
+            color = Colors.teal;
+          }
+
+          return Card(
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: color,
+                child: Text(title[0], style: const TextStyle(color: Colors.white)),
+              ),
+              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(subtitle),
+              isThreeLine: true,
+              onTap: item['attchmntFile'] != null
+                  ? () => _launchURL("https://www.nseindia.com${item['attchmntFile']}")
+                  : null,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _launchURL(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 }
+
+// void main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   runApp(const MyApp());
+// }
+
+// class MyApp extends StatelessWidget {
+//   const MyApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return MultiProvider(
+//       providers: [ChangeNotifierProvider(create: (_) => AppStateProvider())],
+//       child: MaterialApp(
+//         debugShowCheckedModeBanner: false,
+//         title: 'SnapPDF',
+//         theme: AppTheme.lightTheme,
+//         darkTheme: AppTheme.darkTheme,
+//         // home: const SplashScreen(),
+//       ),
+//     );
+//   }
+// }
