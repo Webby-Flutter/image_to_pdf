@@ -1,6 +1,7 @@
 // board_meetings_tab.dart
 import 'package:flutter/material.dart';
 import 'package:image_pdf_convert/models/enums_model.dart';
+import 'package:image_pdf_convert/screens/other_screens/pdf_viewer_screen.dart';
 import 'package:intl/intl.dart';
 import '../models/board_meeting_model.dart';
 
@@ -165,7 +166,10 @@ class _BoardMeetingCard extends StatelessWidget {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () {
-                        _openAttachment(meeting.attachment, context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => PdfViewerScreen(url: meeting.attachment)),
+                        );
                       },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.blue,

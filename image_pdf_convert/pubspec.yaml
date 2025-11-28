@@ -52,6 +52,7 @@ dependencies:
   dio: ^5.9.0
   cookie_jar: ^4.0.8
   dio_cookie_manager: ^3.3.0
+  syncfusion_flutter_pdfviewer: ^31.2.15
 
 dev_dependencies:
   flutter_test:

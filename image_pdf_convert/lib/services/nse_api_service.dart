@@ -1,11 +1,7 @@
 // nse_api_service.dart
-import 'package:dio/dio.dart';
-import 'package:flutter/widgets.dart';
 import 'package:image_pdf_convert/models/board_meeting_model.dart';
 import 'package:image_pdf_convert/models/corporate_action_model.dart';
 import 'package:image_pdf_convert/models/corporate_announcement_model.dart';
-import 'package:dio_cookie_manager/dio_cookie_manager.dart';
-import 'package:cookie_jar/cookie_jar.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
